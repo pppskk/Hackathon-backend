@@ -1,3 +1,18 @@
+// USER
+// POST /users/login
+// RequestBody {
+// 	phone_number : String
+// }
+// Response 200 OK :
+// {
+//   "status": "success",
+//   "message": "OTP has been sent successfully"
+// }
+
+
+// POST /users/otp/checked ← OUTSOURCE API
+// GET /users/profile/:userId
+
 const express = require('express');
 const router = express.Router();
 const Users = require('../../../models/users');
