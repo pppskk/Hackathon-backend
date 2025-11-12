@@ -1,7 +1,7 @@
 // PLOT
 // POST /plot  สร้างแปลงพืชใหม่
 // RequestBody{
-// 	plant_name : String
+// 	plant_name : String 
 // 	plot_name : String
 // 	area_size : Double
 // 	plant_date : DATE
