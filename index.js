@@ -1,0 +1,23 @@
+const express = require("express");
+const session = require('express-session');
+const { connect, sync } = require('./function/postgre');
+
+const app = express();
+const PORT = 8080;
+
+app.use(express.json());
+
+// Secction ไว้ให้ไม่ต้อง login ทุกครั้ง
+app.use(session({
+    secret: 'FC3XSZYnBW',
+    resave: false,
+    saveUninitialized: true,
+}));
+
+app.use('/api', require('./routes/app'));
+
+app.listen(PORT, async () => {
+    await connect();
+    await sync();
+    console.log(`Server is running on port ${PORT}`);
+});
