@@ -1,17 +1,24 @@
 const { connect, sync } = require('./function/postgre');
+const session = require('express-session');
 const express = require('express');
-// const 
+
 
 const app = express();
 const PORT = 3005;
 
-app.post('/', (req, res) => {
-  res.status(200).send('OK');
-});
+app.use(express.json());
+app.use(session({
+  secret: 'FC3XSZYnBW',
+  resave: false,
+  saveUninitialized: true,
+}));
+
 
 app.get('/', (req, res) => {
-  res.send('Server is running 🌱');
+  res.send('Hello World!!!!');
 });
+
+// app.use('/api', require('./routes/app'));
 
 require('./models/users');
 require('./models/plants');
@@ -24,3 +31,14 @@ app.listen(PORT, async () => {
   await sync();
   console.log(` Server running on port ${PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
