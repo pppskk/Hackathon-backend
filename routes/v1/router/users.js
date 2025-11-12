@@ -11,7 +11,8 @@
 
 
 // POST /users/otp/checked ← OUTSOURCE API
-// GET /users/profile/:userId
+// GET /users/profile/:userId    --> ข้อมูลผู้ใช้งานจาก id นั้น ชื่อ นามสกุล เบอร์โทร 
+// PUT /users/profile/:userId    --> อัพเดทข้อมูลผู้ใช้งานจาก id นั้น ชื่อ นามสกุล เบอร์โทร 
 
 const express = require('express');
 const router = express.Router();

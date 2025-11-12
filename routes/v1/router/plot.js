@@ -1,5 +1,5 @@
 // PLOT
-// POST /plot
+// POST /plot  สร้างแปลงพืชใหม่
 // RequestBody{
 // 	plant_name : String
 // 	plot_name : String
@@ -7,7 +7,7 @@
 // 	plant_date : DATE
 // 	harvest_date : DATE?
 // }
-// GET /plot/:userId
+// GET /plot/:userId   แสดงข้อมูลทั้งหมดแปลงพืชนั้นที่มีอยู่ ก็คือรายละเอียดของแปลงพืชที่เราเก็บเอาไวนั้นนะแหละ 
 
 const express = require('express');
 const router = express.Router();
