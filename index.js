@@ -17,7 +17,9 @@ app.use(session({
 app.use('/api', require('./routes/app'));
 
 app.listen(PORT, async () => {
-    await connect();
-    await sync();
+    // TODO: Uncomment เมื่อพร้อมเชื่อม database
+    // await connect();
+    // await sync();
     console.log(`Server is running on port ${PORT}`);
+    console.log(`API Base URL: http://localhost:${PORT}/api/v1`);
 });
