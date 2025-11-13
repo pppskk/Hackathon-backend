@@ -15,6 +15,13 @@ const Transaction = sequelize.define('transactions', {
       key: 'round_id'
     }
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: User,
+      key: 'user_id'
+    }
+  },
   type: {
     type: DataTypes.ENUM('income', 'expense'),
     allowNull: false

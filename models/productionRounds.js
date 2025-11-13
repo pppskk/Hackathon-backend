@@ -15,6 +15,13 @@ const ProductionRound = sequelize.define('production_rounds', {
       key: 'plot_id'
     }
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: User,
+      key: 'user_id'
+    }
+  },
   round_name: {
     type: DataTypes.STRING
   },

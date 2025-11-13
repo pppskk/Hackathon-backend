@@ -15,6 +15,13 @@ const Plot = sequelize.define('plots', {
       key: 'plant_id'
     }
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: User,
+      key: 'user_id'
+    }
+  },
   plot_name: {
     type: DataTypes.STRING,
     allowNull: false
