@@ -1,25 +1,44 @@
-const express = require("express");
-const session = require('express-session');
 const { connect, sync } = require('./function/postgre');
+const session = require('express-session');
+const express = require('express');
+
 
 const app = express();
-const PORT = 8080;
+const PORT = 3005;
 
 app.use(express.json());
-
-// Secction ไว้ให้ไม่ต้อง login ทุกครั้ง
 app.use(session({
-    secret: 'FC3XSZYnBW',
-    resave: false,
-    saveUninitialized: true,
+  secret: 'FC3XSZYnBW',
+  resave: false,
+  saveUninitialized: true,
 }));
 
-app.use('/api', require('./routes/app'));
 
-app.listen(PORT, async () => {
-    // TODO: Uncomment เมื่อพร้อมเชื่อม database
-    // await connect();
-    // await sync();
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`API Base URL: http://localhost:${PORT}/api/v1`);
+app.get('/', (req, res) => {
+  res.send('Hello World!!!!');
 });
+
+// app.use('/api', require('./routes/app'));
+
+require('./models/users');
+require('./models/plants');
+require('./models/plots');
+require('./models/productionRounds');
+require('./models/transactions');
+require('./models/transactionType');
+require('./models/transactionCategory');
+
+
+(async () => {
+  try {
+    await connect();
+    console.log(' Start syncing database...');
+    await sync({ force: true });
+    console.log(' Database synced with FORCE mode!');
+    app.listen(PORT, () =>
+      console.log(`Server running on http://localhost:${PORT}`)
+    );
+  } catch (error) {
+    console.error(' Failed to start server:', error);
+  }
+})();

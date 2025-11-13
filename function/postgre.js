@@ -18,6 +18,7 @@ async function connect() {
     try {
         await sequelize.authenticate();
         console.log('Connection successfully');
+        console.log(`Connected to ${process.env.DB_NAME} on ${process.env.DB_HOST}:${process.env.DB_PORT}`);
     } catch (error) {
         console.error('Database error:', error);
     }
