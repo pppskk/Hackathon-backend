@@ -16,8 +16,8 @@
 
 const express = require('express');
 const router = express.Router();
-const Users = require('../../../models/users');
-const { requireAuth, requireOwnership } = require('../../../function/users');
+const Users = require('../models/users');
+const { requireAuth, requireOwnership } = require('../function/users');
 
 router.post("/register", async (req, res) => {
   const { fName, lName, email, password, tel, birthday } = req.body;

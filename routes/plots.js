@@ -11,8 +11,8 @@
 
 const express = require('express');
 const router = express.Router();
-const Plots = require('../../../models/plots');
-const Users = require('../../../models/users');
+const Plots = require('../models/plots');
+const Users = require('../models/users');
 
 // POST /plot - สร้างแปลงพืชใหม่
 router.post('/', async (req, res) => {
