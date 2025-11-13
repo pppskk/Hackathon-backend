@@ -14,9 +14,9 @@
 
 const express = require('express');
 const router = express.Router();
-const Transactions = require('../../../models/transactions');
-const Plots = require('../../../models/plots');
-const Users = require('../../../models/users');
+const Transactions = require('../models/transactions');
+const Plots = require('../models/plots');
+const Users = require('../models/users');
 
 // POST /lists - สร้างรายการรายรับ-รายจ่าย
 router.post('/', async (req, res) => {
