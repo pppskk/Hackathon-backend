@@ -18,15 +18,8 @@ app.get('/', (req, res) => {
   res.send('Hello World!!!!');
 });
 
-// app.use('/api', require('./routes/app'));
 
-require('./models/users');
-require('./models/plants');
-require('./models/plots');
-require('./models/productionRounds');
-require('./models/transactions');
-require('./models/transactionType');
-require('./models/transactionCategory');
+app.use('/api', require('./routes'));
 
 
 (async () => {
