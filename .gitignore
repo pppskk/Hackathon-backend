@@ -7,7 +7,7 @@
 
 # environment variables
 .env
-
+readme_testcase.md
 # logs
 logs
 *.log

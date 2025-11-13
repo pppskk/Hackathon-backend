@@ -20,27 +20,31 @@ const Users = require('../models/users');
 const { requireAuth, requireOwnership } = require('../function/users');
 
 router.post("/register", async (req, res) => {
-  const { fName, lName, email, password, tel, birthday } = req.body;
-
   try {
-    if (!fName || !lName || !tel || !email || !password || !birthday) return res.status(400).json({ message: "No fields to register" });
+    const { firstName, lastName, phone, userPicture } = req.body;
 
-    if (!validateBirthday(birthday)) return res.status(400).json({ message: "Invalid birthday" });
-    const selectQuery = await Users.findOne({ where: { email } });
-    if (selectQuery) {
+    if (!phone) {
+      return res.status(400).json({ message: "phone is required" });
+    }
+
+    const phoneRegex = /^0[6-9]\d{8}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ message: "Invalid phone number format" });
+    }
+
+    const exists = await Users.findOne({ where: { phone } });
+    if (exists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const result = await Users.create({ firstName: fName, lastName: lName, email, password, tel, birthday });
+    const result = await Users.create({ firstName: firstName || null, lastName: lastName || null, phone, userPicture: userPicture || null });
     if (!result) {
       return res.status(400).json({ message: "User registration failed" });
     }
 
-    req.session.user = {
-      email: email,
-    }
+    req.session.user = { user_id: result.user_id, phone: result.phone };
 
-    res.status(200).json({ message: "User registered successfully" });
+    res.status(200).json({ message: "User registered successfully", data: { user_id: result.user_id, firstName: result.firstName, lastName: result.lastName, phone: result.phone, userPicture: result.userPicture } });
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ message: "Internal server error" });
@@ -48,34 +52,35 @@ router.post("/register", async (req, res) => {
 });
 
 router.put("/update", requireAuth, async (req, res) => {
-  const { id, fName, lName, email, password, tel } = req.body;
-
   try {
-    if (!fName && !lName && !tel && !email && !password) return res.status(400).json({ message: "No fields to update" });
+    const { user_id, firstName, lastName, phone, userPicture } = req.body;
 
-    const userQuery = await Users.findOne({ where: { id: id } });
+    if (!user_id) return res.status(400).json({ message: "user_id is required" });
+    if (!firstName && !lastName && !phone && !userPicture) return res.status(400).json({ message: "No fields to update" });
+
+    const userQuery = await Users.findOne({ where: { user_id } });
     if (!userQuery) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    let NewFName = userQuery.firstName;
-    let NewLName = userQuery.lastName;
-    let NewTel = userQuery.tel;
-    let NewEmail = userQuery.email;
-    let NewPassword = userQuery.password;
+    const updates = {};
+    if (firstName !== undefined) updates.firstName = firstName;
+    if (lastName !== undefined) updates.lastName = lastName;
+    if (phone !== undefined) {
+      const phoneRegex = /^0[6-9]\d{8}$/;
+      if (!phoneRegex.test(phone)) return res.status(400).json({ message: "Invalid phone number format" });
+      updates.phone = phone;
+    }
+    if (userPicture !== undefined) updates.userPicture = userPicture;
 
-    if (fName) NewFName = fName;
-    if (lName) NewLName = lName;
-    if (tel) NewTel = tel;
-    if (email) NewEmail = email;
-    if (password) NewPassword = password;
-
-    const updateQuery = await Users.update({ firstName: NewFName, lastName: NewLName, tel: NewTel, email: NewEmail, password: NewPassword }, { where: { id: id } });
-    if (!updateQuery) {
+    const [count] = await Users.update(updates, { where: { user_id } });
+    if (count === 0) {
       return res.status(400).json({ message: "User update failed" });
     }
 
-    return res.status(200).json({ message: "User updated successfully" });
+    const updated = await Users.findOne({ where: { user_id }, attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture'] });
+
+    return res.status(200).json({ message: "User updated successfully", data: updated });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
@@ -153,7 +158,8 @@ router.get('/check', requireAuth, (req, res) => {
     return res.status(200).json({
       message: 'Authenticated',
       user: {
-        email: req.session.user.email,
+        user_id: req.session.user.user_id,
+        phone: req.session.user.phone,
       }
     });
   } catch (err) {
@@ -169,8 +175,8 @@ router.get('/:id', requireAuth, requireOwnership, async (req, res) => {
     if (!userId) return res.status(400).json({ message: "User ID is required" });
 
     const userData = await Users.findOne({
-      where: { id: userId },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'tel', 'birthday', 'money']
+      where: { user_id: userId },
+      attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
     });
 
     if (!userData) {
@@ -193,7 +199,7 @@ router.delete('/delete/:id', requireOwnership, async (req, res) => {
     const userId = req.params.id;
 
     const deleteQuery = await Users.destroy({
-      where: { id: userId }
+      where: { user_id: userId }
     });
 
     if (!deleteQuery) {
@@ -214,110 +220,7 @@ router.delete('/delete/:id', requireOwnership, async (req, res) => {
   }
 });
 
-router.post('/deposit', requireOwnership, async (req, res) => {
-  try {
-    const { id, amount } = req.body;
-
-    if (!amount) {
-      return res.status(400).json({ message: 'Amount is required' });
-    }
-
-    const depositAmount = parseFloat(amount);
-
-    if (isNaN(depositAmount) || depositAmount <= 0) {
-      return res.status(400).json({ message: 'Invalid amount' });
-    }
-
-    const user = await Users.findOne({
-      where: { id: id },
-      attributes: ['id', 'email', 'money']
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    //calculate new balance
-    const currentBalance = parseFloat(user.money) || 0;
-    const newBalance = currentBalance + depositAmount;
-
-    await Users.update(
-      { money: newBalance.toFixed(2) },
-      { where: { email: req.session.user.email } }
-    );
-
-    res.status(200).json({
-      message: 'Deposit successful',
-      transaction: {
-        type: 'deposit',
-        amount: depositAmount,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        timestamp: new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
-      }
-    });
-  } catch (error) {
-    console.error('Deposit error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-router.post('/withdraw', requireOwnership, async (req, res) => {
-  try {
-    const { id, amount } = req.body;
-
-    if (!amount) {
-      return res.status(400).json({ message: 'Amount is required' });
-    }
-
-    const withdrawAmount = parseFloat(amount);
-
-    if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
-      return res.status(400).json({ message: 'Invalid amount' });
-    }
-
-    const user = await Users.findOne({
-      where: { id: id },
-      attributes: ['id', 'email', 'money']
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const currentBalance = parseFloat(user.money) || 0;
-
-    if (currentBalance < withdrawAmount) {
-      return res.status(400).json({
-        message: 'Insufficient balance',
-        currentBalance: currentBalance,
-        requestedAmount: withdrawAmount
-      });
-    }
-
-    const newBalance = currentBalance - withdrawAmount;
-
-    await Users.update(
-      { money: newBalance.toFixed(2) },
-      { where: { id: id } }
-    );
-
-    res.status(200).json({
-      message: 'Withdrawal successful',
-      transaction: {
-        type: 'withdrawal',
-        amount: withdrawAmount,
-        previousBalance: currentBalance,
-        newBalance: newBalance,
-        timestamp: new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })
-      }
-    });
-
-  } catch (error) {
-    console.error('Withdraw error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
+// หมายเหตุ: ตัด endpoint ฝาก/ถอน ที่อิง field money ออก เพราะไม่มีในโมเดล
 
 // GET /users/profile/:userId - ดึงข้อมูลผู้ใช้งาน
 router.get('/profile/:userId', async (req, res) => {
@@ -331,38 +234,22 @@ router.get('/profile/:userId', async (req, res) => {
       });
     }
 
-    // TODO: ดึงข้อมูลจาก database
-    // const userData = await Users.findOne({
-    //   where: { user_id: userId },
-    //   attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
-    // });
+    const userData = await Users.findOne({
+      where: { user_id: userId },
+      attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
+    });
 
-    // if (!userData) {
-    //   return res.status(404).json({ 
-    //     status: "error",
-    //     message: "User not found" 
-    //   });
-    // }
-
-    // Mock data สำหรับทดสอบ logic
-    const mockUserData = {
-      user_id: userId,
-      firstName: "08xxxxxxxx",
-      lastName: "",
-      phone: "08xxxxxxxx",
-      userPicture: null
-    };
+    if (!userData) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found"
+      });
+    }
 
     res.status(200).json({
       status: "success",
       message: "User profile retrieved successfully",
-      data: {
-        userId: mockUserData.user_id,
-        firstName: mockUserData.firstName,
-        lastName: mockUserData.lastName,
-        phone: mockUserData.phone,
-        userPicture: mockUserData.userPicture
-      }
+      data: userData
     });
 
   } catch (error) {
@@ -406,59 +293,52 @@ router.put('/profile/:userId', async (req, res) => {
       }
     }
 
-    // TODO: ตรวจสอบว่ามี user นี้อยู่จริงหรือไม่
-    // const existingUser = await Users.findOne({
-    //   where: { user_id: userId }
-    // });
+    // ตรวจสอบว่ามี user นี้อยู่จริงหรือไม่
+    const existingUser = await Users.findOne({
+      where: { user_id: userId }
+    });
 
-    // if (!existingUser) {
-    //   return res.status(404).json({ 
-    //     status: "error",
-    //     message: "User not found" 
-    //   });
-    // }
+    if (!existingUser) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found"
+      });
+    }
 
-    // TODO: ตรวจสอบว่าเบอร์โทรซ้ำกับ user อื่นหรือไม่ (ถ้ามีการเปลี่ยนเบอร์)
-    // if (phone && phone !== existingUser.phone) {
-    //   const phoneExists = await Users.findOne({
-    //     where: { phone: phone }
-    //   });
-    //   if (phoneExists) {
-    //     return res.status(400).json({ 
-    //       status: "error",
-    //       message: "Phone number already exists" 
-    //     });
-    //   }
-    // }
+    // ตรวจสอบว่าเบอร์โทรซ้ำกับ user อื่นหรือไม่ (ถ้ามีการเปลี่ยนเบอร์)
+    if (phone && phone !== existingUser.phone) {
+      const phoneExists = await Users.findOne({
+        where: { phone: phone }
+      });
+      if (phoneExists) {
+        return res.status(400).json({
+          status: "error",
+          message: "Phone number already exists"
+        });
+      }
+    }
 
-    // TODO: อัพเดทข้อมูลใน database
-    // const updateData = {};
-    // if (firstName) updateData.firstName = firstName;
-    // if (lastName) updateData.lastName = lastName;
-    // if (phone) updateData.phone = phone;
-    // if (userPicture) updateData.userPicture = userPicture;
+    // อัพเดทข้อมูลใน database
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (userPicture !== undefined) updateData.userPicture = userPicture;
 
-    // await Users.update(updateData, {
-    //   where: { user_id: userId }
-    // });
+    await Users.update(updateData, {
+      where: { user_id: userId }
+    });
 
-    // TODO: ดึงข้อมูลที่อัพเดทแล้ว
-    // const updatedUser = await Users.findOne({
-    //   where: { user_id: userId },
-    //   attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
-    // });
+    // ดึงข้อมูลที่อัพเดทแล้ว
+    const updatedUser = await Users.findOne({
+      where: { user_id: userId },
+      attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
+    });
 
-    // Mock response
     res.status(200).json({
       status: "success",
       message: "User profile updated successfully",
-      data: {
-        userId: userId,
-        firstName: firstName || "08xxxxxxxx",
-        lastName: lastName || "",
-        phone: phone || "08xxxxxxxx",
-        userPicture: userPicture || null
-      }
+      data: updatedUser
     });
 
   } catch (error) {
@@ -471,14 +351,5 @@ router.put('/profile/:userId', async (req, res) => {
 });
 
 
-
-function validateBirthday(birthday) {
-  const dateFormat = new Date(birthday).getFullYear();
-  const currentYear = new Date().getFullYear();
-  const age = currentYear - dateFormat;
-  if (dateFormat > currentYear) return false;
-  if (age > 100 || age < 20) return false;
-  return true;
-}
 
 module.exports = router;
