@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../function/postgre');
 const plots = require('./plots');
+const User = require('./users');
 
 const ProductionRound = sequelize.define('production_rounds', {
   round_id: {

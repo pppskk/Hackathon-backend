@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../function/postgre');
 const plants = require('./plants');
+const User = require('./users');
 
 const Plot = sequelize.define('plots', {
   plot_id: {

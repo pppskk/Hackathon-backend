@@ -25,20 +25,20 @@ require('./models/plants');
 require('./models/plots');
 require('./models/productionRounds');
 require('./models/transactions');
-
-app.listen(PORT, async () => {
-  await connect();
-  await sync();
-  console.log(` Server running on port ${PORT}`);
-});
+require('./models/transactionType');
+require('./models/transactionCategory');
 
 
-
-
-
-
-
-
-
-
-
+(async () => {
+  try {
+    await connect();
+    console.log(' Start syncing database...');
+    await sync({ force: true });
+    console.log(' Database synced with FORCE mode!');
+    app.listen(PORT, () =>
+      console.log(`Server running on http://localhost:${PORT}`)
+    );
+  } catch (error) {
+    console.error(' Failed to start server:', error);
+  }
+})();
