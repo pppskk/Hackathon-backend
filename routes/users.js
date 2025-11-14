@@ -42,7 +42,13 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "User registration failed" });
     }
 
-    req.session.user = { user_id: result.user_id, phone: result.phone };
+    // เก็บข้อมูล user ใน session หลังจาก register สำเร็จ
+    req.session.user = {
+      user_id: result.user_id,
+      phone: result.phone,
+      firstName: result.firstName,
+      lastName: result.lastName
+    };
 
     res.status(200).json({ message: "User registered successfully", data: { user_id: result.user_id, firstName: result.firstName, lastName: result.lastName, phone: result.phone, userPicture: result.userPicture } });
   } catch (error) {
@@ -90,40 +96,75 @@ router.put("/update", requireAuth, async (req, res) => {
 // POST /users/login - ส่ง OTP ไปยังเบอร์โทรศัพท์ (ตาม comment)
 router.post('/login', async (req, res) => {
   try {
-    const { phone_number } = req.body;
-
-    // Validate input
-    if (!phone_number) {
+    // ตรวจสอบว่า req.body ถูก parse หรือไม่
+    if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({
         status: "error",
-        message: "Phone number is required"
+        message: "Invalid request body. Please send JSON data.",
+        debug: { bodyType: typeof req.body, body: req.body }
+      });
+    }
+
+    const { phone_number, phone } = req.body;
+    const phoneNumber = phone_number || phone; // รองรับทั้ง phone_number และ phone
+
+    // Validate input
+    if (!phoneNumber) {
+      return res.status(400).json({
+        status: "error",
+        message: "Phone number is required. Please provide 'phone' or 'phone_number' in request body.",
+        received: { phone_number, phone, body: req.body }
       });
     }
 
     // Validate phone number format (Thai phone number)
     const phoneRegex = /^0[6-9]\d{8}$/;
-    if (!phoneRegex.test(phone_number)) {
+    if (!phoneRegex.test(phoneNumber)) {
       return res.status(400).json({
         status: "error",
         message: "Invalid phone number format"
       });
     }
 
+    // ค้นหา user จาก database ด้วยเบอร์โทร
+    const user = await Users.findOne({ where: { phone: phoneNumber } });
+    
+    if (!user) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found. Please register first."
+      });
+    }
+
     // TODO: เชื่อมต่อกับ OTP service เพื่อส่ง OTP
     // const otpCode = generateOTP(); // สร้าง OTP
-    // await sendOTP(phone_number, otpCode); // ส่ง OTP ไปยังเบอร์โทร
+    // await sendOTP(phoneNumber, otpCode); // ส่ง OTP ไปยังเบอร์โทร
 
     // TODO: เก็บ OTP และ phone_number ไว้ใน session หรือ cache พร้อม expiration time
     // req.session.otp = {
-    //   phone_number: phone_number,
+    //   phone_number: phoneNumber,
     //   code: otpCode,
     //   expiresAt: new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
     // };
 
+    // เก็บข้อมูล user ใน session หลังจาก login สำเร็จ
+    req.session.user = {
+      user_id: user.user_id,
+      phone: user.phone,
+      firstName: user.firstName,
+      lastName: user.lastName
+    };
+
     // Response success
     res.status(200).json({
       status: "success",
-      message: "OTP has been sent successfully"
+      message: "OTP has been sent successfully",
+      user: {
+        user_id: user.user_id,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
     });
 
   } catch (error) {
@@ -155,16 +196,40 @@ router.post('/logout', requireAuth, async (req, res) => {
 
 router.get('/check', requireAuth, (req, res) => {
   try {
+    // requireAuth middleware จะเช็คแล้วว่า req.session.user มีอยู่
+    // แต่เพื่อความปลอดภัย ตรวจสอบอีกครั้ง
+    if (!req.session) {
+      return res.status(401).json({ message: 'Unauthorized - Session not found' });
+    }
+
+    if (!req.session.user) {
+      return res.status(401).json({ message: 'Unauthorized - Please login first' });
+    }
+
+    const user = req.session.user;
+    
+    // ตรวจสอบว่ามี user_id หรือไม่
+    if (!user.user_id) {
+      return res.status(401).json({ message: 'Unauthorized - Invalid session data' });
+    }
+    
     return res.status(200).json({
       message: 'Authenticated',
       user: {
-        user_id: req.session.user.user_id,
-        phone: req.session.user.phone,
+        user_id: user.user_id,
+        phone: user.phone || null,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null
       }
     });
   } catch (err) {
-    console.error('Authenticated:', err);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Check authentication error:', err);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ 
+      message: 'Internal server error', 
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 
