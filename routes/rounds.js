@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const controller = require('../controllers/round.controller');
 
-router.get('/', (req, res) => {
-  res.json({ message: 'User API is working!' });
-});
+router.get('/', controller.getRounds);
+router.post('/', controller.createRound);
 
 module.exports = router;
