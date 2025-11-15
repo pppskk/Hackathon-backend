@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const controller = require('../controllers/dashboard.controller');
 
-router.get('/', (req, res) => {
-  res.json({ message: 'User API is working!' });
-});
+router.get('/summary', controller.getSummary);
+router.get('/plots', controller.getPlots);
 
 module.exports = router;

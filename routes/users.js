@@ -128,7 +128,7 @@ router.post('/login', async (req, res) => {
 
     // ค้นหา user จาก database ด้วยเบอร์โทร
     const user = await Users.findOne({ where: { phone: phoneNumber } });
-    
+
     if (!user) {
       return res.status(404).json({
         status: "error",
@@ -207,12 +207,12 @@ router.get('/check', requireAuth, (req, res) => {
     }
 
     const user = req.session.user;
-    
+
     // ตรวจสอบว่ามี user_id หรือไม่
     if (!user.user_id) {
       return res.status(401).json({ message: 'Unauthorized - Invalid session data' });
     }
-    
+
     return res.status(200).json({
       message: 'Authenticated',
       user: {
@@ -225,8 +225,8 @@ router.get('/check', requireAuth, (req, res) => {
   } catch (err) {
     console.error('Check authentication error:', err);
     console.error('Error stack:', err.stack);
-    res.status(500).json({ 
-      message: 'Internal server error', 
+    res.status(500).json({
+      message: 'Internal server error',
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
