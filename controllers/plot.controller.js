@@ -60,8 +60,17 @@ exports.createPlot = async (req, res) => {
 
 exports.updatePlot = async (req, res) => {
   try {
+    const sessionUserId = req.session.userId;
     const plot = await Plot.findByPk(req.params.id);
     if (!plot) return res.status(404).json({ error: "Plot not found" });
+
+    // เช็คว่าเป็นของ user นี้หรือไม่
+    if (plot.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only update your own plots' 
+      });
+    }
 
     plot.plot_name = req.body.plot_name ?? plot.plot_name;
     plot.area_size = req.body.area_size ?? plot.area_size;
@@ -77,8 +86,17 @@ exports.updatePlot = async (req, res) => {
 
 exports.deletePlot = async (req, res) => {
   try {
+    const sessionUserId = req.session.userId;
     const plot = await Plot.findByPk(req.params.id);
     if (!plot) return res.status(404).json({ error: "Plot not found" });
+
+    // เช็คว่าเป็นของ user นี้หรือไม่
+    if (plot.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only delete your own plots' 
+      });
+    }
 
     await plot.destroy();
     res.json({ message: "Plot deleted" });

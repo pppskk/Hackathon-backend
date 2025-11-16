@@ -4,6 +4,14 @@
 
 # dependencies
 /node_modules
+API_COMPLETE_GUIDE.md
+API_DOCUMENTATION.md
+CATEGORIES_SETUP.md
+LEARNING_GUIDE.md
+SECURITY_UPDATE.md
+test_api_fetch.js
+test_api.js
+TRANSACTION_FIX.md
 
 # environment variables
 .env

@@ -22,10 +22,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// Session configuration with better security
 app.use(session({
-  secret: 'FC3XSZYnBW',
+  secret: process.env.SESSION_SECRET || 'FC3XSZYnBW',
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false, // เปลี่ยนเป็น false เพื่อไม่สร้าง session ที่ไม่จำเป็น
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // ใช้ secure cookie ใน production
+    httpOnly: true, // ป้องกัน XSS
+    maxAge: 24 * 60 * 60 * 1000, // 24 ชั่วโมง
+    sameSite: 'lax' // ป้องกัน CSRF
+  },
+  name: 'sessionId', // เปลี่ยนชื่อ cookie เพื่อความปลอดภัย
+  rolling: true // รีเซ็ต expiration ทุกครั้งที่มี request
 }));
 
 
@@ -40,13 +49,18 @@ app.use('/api', require('./routes'));
 (async () => {
   try {
     await connect();
-    console.log(' Start syncing database...');
+    console.log('🔄 Start syncing database...');
     await sync({ force: true });
-    console.log(' Database synced with FORCE mode!');
+    console.log('✅ Database synced with FORCE mode!');
+    
+    // สร้างข้อมูล categories อัตโนมัติ
+    const { seedCategories } = require('./function/seedCategories');
+    await seedCategories();
+    
     app.listen(PORT, () =>
-      console.log(`Server running on http://localhost:${PORT}`)
+      console.log(`\n🚀 Server running on http://localhost:${PORT}\n`)
     );
   } catch (error) {
-    console.error(' Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
   }
 })();

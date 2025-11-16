@@ -15,8 +15,19 @@ exports.getAllPlants = async (req, res) => {
 exports.getPlantById = async (req, res) => {
   try {
     const { id } = req.params;
+    const sessionUserId = req.session.userId;
+    
     const plant = await Plant.findByPk(id);
     if (!plant) return res.status(404).json({ error: 'Plant not found' });
+    
+    // เช็คว่าเป็นของ user นี้หรือไม่
+    if (plant.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only access your own plants' 
+      });
+    }
+    
     res.json(plant);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -40,8 +51,19 @@ exports.updatePlant = async (req, res) => {
   try {
     const { id } = req.params;
     const { plant_name } = req.body;
+    const sessionUserId = req.session.userId;
+    
     const plant = await Plant.findByPk(id);
     if (!plant) return res.status(404).json({ error: 'Plant not found' });
+    
+    // เช็คว่าเป็นของ user นี้หรือไม่
+    if (plant.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only update your own plants' 
+      });
+    }
+    
     plant.plant_name = plant_name;
     await plant.save();
     res.json(plant);
@@ -54,8 +76,19 @@ exports.updatePlant = async (req, res) => {
 exports.deletePlant = async (req, res) => {
   try {
     const { id } = req.params;
+    const sessionUserId = req.session.userId;
+    
     const plant = await Plant.findByPk(id);
     if (!plant) return res.status(404).json({ error: 'Plant not found' });
+    
+    // เช็คว่าเป็นของ user นี้หรือไม่
+    if (plant.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only delete your own plants' 
+      });
+    }
+    
     await plant.destroy();
     res.json({ message: 'Plant deleted successfully' });
   } catch (error) {

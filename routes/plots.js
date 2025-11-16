@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/plot.controller');
+const { requireAuth, checkUserOwnership } = require('../function/auth');
 
-router.get('/', controller.getPlots);
-router.post('/', controller.createPlot);
-router.put('/:id', controller.updatePlot);
-router.delete('/:id', controller.deletePlot);
+// ทุก route ต้อง login ก่อน
+router.get('/', requireAuth, checkUserOwnership, controller.getPlots);
+router.post('/', requireAuth, checkUserOwnership, controller.createPlot);
+router.put('/:id', requireAuth, controller.updatePlot);
+router.delete('/:id', requireAuth, controller.deletePlot);
 
 module.exports = router;

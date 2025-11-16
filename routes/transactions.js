@@ -406,8 +406,10 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/transaction.controller');
+const { requireAuth, checkUserOwnership } = require('../function/auth');
 
-router.get('/', controller.getTransactions);
-router.post('/', controller.createTransaction);
+// ทุก route ต้อง login ก่อน
+router.get('/', requireAuth, controller.getTransactions);
+router.post('/', requireAuth, checkUserOwnership, controller.createTransaction);
 
 module.exports = router;

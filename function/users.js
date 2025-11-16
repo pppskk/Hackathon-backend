@@ -1,43 +1,66 @@
-// Middleware สำหรับตรวจสอบ authentication และ ownership
-// ตอนนี้เป็นแบบง่ายๆ สำหรับทดสอบ API โดยไม่ต้องเชื่อม database
-
-// Middleware: ตรวจสอบว่าผู้ใช้ login แล้วหรือยัง
+// Middleware สำหรับตรวจสอบ authentication
 function requireAuth(req, res, next) {
   try {
-    // ตรวจสอบว่า req.session มีอยู่หรือไม่
-    if (!req.session) {
-      console.error('requireAuth: req.session is undefined');
-      return res.status(401).json({ message: 'Unauthorized - Session not found' });
+    // ตรวจสอบว่ามี session และ userId หรือไม่
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Unauthorized - Please login first'
+      });
     }
 
-    // ตรวจสอบ session หรือ token
-    if (!req.session.user) {
-      return res.status(401).json({ message: 'Unauthorized - Please login first' });
+    // ตรวจสอบว่า session ยังไม่หมดอายุ
+    if (req.session.cookie && req.session.cookie.expires) {
+      const now = new Date();
+      const expires = new Date(req.session.cookie.expires);
+      if (now > expires) {
+        req.session.destroy();
+        return res.status(401).json({
+          status: 'error',
+          message: 'Session expired - Please login again'
+        });
+      }
     }
 
     next();
   } catch (error) {
     console.error('requireAuth error:', error);
-    console.error('requireAuth error stack:', error.stack);
     return res.status(500).json({
-      message: 'Internal server error',
-      error: error.message
+      status: 'error',
+      message: 'Internal server error'
     });
   }
 }
 
-// Middleware: ตรวจสอบว่าผู้ใช้เป็นเจ้าของ resource หรือไม่
+// Middleware สำหรับตรวจสอบว่าผู้ใช้เป็นเจ้าของ resource หรือไม่
 function requireOwnership(req, res, next) {
-  // TODO: เมื่อพร้อมเชื่อม database ให้ uncomment และแก้ไขส่วนนี้
-  // ตรวจสอบว่า user_id ใน request ตรงกับ user ที่ login หรือไม่
-  // const userId = req.params.id || req.body.id;
-  // if (req.session.user.id !== userId) {
-  //   return res.status(403).json({ message: 'Forbidden - You do not have permission' });
-  // }
+  try {
+    const resourceId = req.params.id || req.params.userId;
+    const requesterId = req.session.userId;
 
-  // สำหรับตอนนี้ให้ผ่านไปก่อน (ไม่ต้องเช็ค ownership)
-  next();
+    if (!resourceId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Resource ID is required'
+      });
+    }
+
+    // ตรวจสอบว่า user ที่ request เป็นเจ้าของ resource หรือไม่
+    if (parseInt(resourceId) !== requesterId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Forbidden - You do not have permission to access this resource'
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('requireOwnership error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal server error'
+    });
+  }
 }
 
 module.exports = { requireAuth, requireOwnership };
-

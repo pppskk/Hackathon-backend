@@ -3,10 +3,24 @@ const Round = require('../models/productionRounds');
 exports.getRounds = async (req, res) => {
   try {
     const { plot_id } = req.query;
+    const sessionUserId = req.session.userId;
     
     // Validate input
     if (!plot_id) {
       return res.status(400).json({ error: 'plot_id is required' });
+    }
+
+    // เช็คว่า plot นี้เป็นของ user นี้หรือไม่
+    const Plot = require('../models/plots');
+    const plot = await Plot.findByPk(plot_id);
+    if (!plot) {
+      return res.status(404).json({ error: 'Plot not found' });
+    }
+    if (plot.user_id !== sessionUserId) {
+      return res.status(403).json({ 
+        status: 'error',
+        message: 'Forbidden - You can only access your own rounds' 
+      });
     }
 
     const rounds = await Round.findAll({ where: { plot_id } });
