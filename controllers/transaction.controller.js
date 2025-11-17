@@ -17,49 +17,74 @@ exports.getTransactions = async (req, res) => {
 
 exports.createTransaction = async (req, res) => {
   try {
-    const { round_id, user_id, category_id, amount, note, date } = req.body;
+    let { user_id, round_id, category_id, amount, note, date, plot_id } = req.body;
 
-    if (!round_id || !user_id || !category_id || !amount) {
-      return res.status(400).json({ error: "Missing required fields." });
+    // STEP 1 — หา round หรือสร้างใหม่
+    if (!round_id && plot_id) {
+      let round = await Round.findOne({ where: { plot_id } });
+
+      // ⬇ ถ้าไม่เจอรอบ → สร้างรอบใหม่ทันที
+      if (!round) {
+        round = await Round.create({
+          plot_id,
+          user_id,
+          round_name: "รอบการปลูกครั้งแรก",
+          start_date: date,         // ใช้วันที่ทำรายการ
+          end_date: null,
+          income_total: 0,
+          expense_total: 0
+        });
+      }
+
+      round_id = round.round_id;
     }
 
-    // 1) บันทึกรายการใหม่
+    if (!round_id) {
+      return res.status(400).json({ error: "Missing round_id" });
+    }
+
+    // STEP 2 — สร้าง transaction
     const tx = await Transaction.create({
-      round_id,
       user_id,
+      round_id,
       category_id,
       amount,
       note,
       date
     });
 
-    // 2) อัปเดตยอดรวมของรอบ (SUM ใหม่จาก transactions)
-    const sums = await sequelize.query(`
-      SELECT 
-        COALESCE(SUM(t.amount), 0) AS expense_total
-      FROM transactions t
-      WHERE t.round_id = :round_id
+    // STEP 3 — อัปเดตรวมยอดให้ round
+    const totals = await sequelize.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN amount > 0 THEN amount END), 0) AS income_total,
+        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) END), 0) AS expense_total
+      FROM transactions
+      WHERE round_id = :round_id
     `, {
       replacements: { round_id },
       type: QueryTypes.SELECT
     });
 
-    const expense_total = sums[0].expense_total;
-
-    // 3) อัปเดตรอบใน production_rounds
     await Round.update(
-      { expense_total },
+      {
+        income_total: totals[0].income_total,
+        expense_total: totals[0].expense_total
+      },
       { where: { round_id } }
     );
 
-    res.status(201).json({
-      message: "Transaction added and round updated.",
-      transaction: tx,
-      current_expense_total: expense_total
+    res.json({
+      message: "Transaction created successfully",
+      round_id,
+      totals: totals[0],
+      transaction: tx
     });
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
