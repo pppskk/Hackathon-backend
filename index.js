@@ -21,6 +21,7 @@ app.use((req, res, next) => {
     console.log('  Body keys:', req.body ? Object.keys(req.body) : 'null');
   }
   next();
+  
 });
 
 app.use(cors());
