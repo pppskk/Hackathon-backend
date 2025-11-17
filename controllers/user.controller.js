@@ -6,55 +6,55 @@ exports.register = async (req, res) => {
     const { firstName, lastName, phone, userPicture } = req.body;
 
     if (!phone) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         status: 'error',
-        message: 'Phone number is required' 
+        message: 'Phone number is required'
       });
     }
 
     const phoneRegex = /^0[6-9]\d{8}$/;
     if (!phoneRegex.test(phone)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         status: 'error',
-        message: 'Invalid phone number format. Must be 10 digits starting with 06-09' 
+        message: 'Invalid phone number format. Must be 10 digits starting with 06-09'
       });
     }
 
     const existingUser = await Users.findOne({ where: { phone } });
     if (existingUser) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         status: 'error',
-        message: 'Phone number already registered' 
+        message: 'Phone number already registered'
       });
     }
 
-    const newUser = await Users.create({ 
-      firstName: firstName || null, 
-      lastName: lastName || null, 
-      phone, 
-      userPicture: userPicture || null 
+    const newUser = await Users.create({
+      firstName: firstName || null,
+      lastName: lastName || null,
+      phone,
+      userPicture: userPicture || null
     });
 
     // สร้าง session หลัง register สำเร็จ
     req.session.userId = newUser.user_id;
     req.session.phone = newUser.phone;
 
-    res.status(201).json({ 
+    res.status(201).json({
       status: 'success',
-      message: 'User registered successfully', 
-      data: { 
-        user_id: newUser.user_id, 
-        firstName: newUser.firstName, 
-        lastName: newUser.lastName, 
-        phone: newUser.phone, 
-        userPicture: newUser.userPicture 
-      } 
+      message: 'User registered successfully',
+      data: {
+        user_id: newUser.user_id,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phone: newUser.phone,
+        userPicture: newUser.userPicture
+      }
     });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: 'Internal server error' 
+      message: 'Internal server error'
     });
   }
 };
@@ -143,23 +143,23 @@ exports.logout = async (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         console.error('Logout error:', err);
-        return res.status(500).json({ 
+        return res.status(500).json({
           status: 'error',
-          message: 'Failed to logout' 
+          message: 'Failed to logout'
         });
       }
 
       res.clearCookie('sessionId');
-      res.status(200).json({ 
+      res.status(200).json({
         status: 'success',
-        message: 'Logout successful' 
+        message: 'Logout successful'
       });
     });
   } catch (error) {
     console.error('Logout error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: 'Internal server error' 
+      message: 'Internal server error'
     });
   }
 };
@@ -170,9 +170,9 @@ exports.checkAuth = async (req, res) => {
     const userId = req.session.userId;
 
     if (!userId) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         status: 'error',
-        message: 'Not authenticated' 
+        message: 'Not authenticated'
       });
     }
 
@@ -183,9 +183,9 @@ exports.checkAuth = async (req, res) => {
 
     if (!user) {
       req.session.destroy();
-      return res.status(401).json({ 
+      return res.status(401).json({
         status: 'error',
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
@@ -211,9 +211,9 @@ exports.getUserById = async (req, res) => {
 
     // ตรวจสอบว่า user ที่ request เป็นเจ้าของข้อมูลหรือไม่
     if (parseInt(id) !== requesterId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         status: 'error',
-        message: 'Forbidden - You can only access your own profile' 
+        message: 'Forbidden - You can only access your own profile'
       });
     }
 
@@ -223,9 +223,9 @@ exports.getUserById = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         status: 'error',
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
@@ -236,9 +236,9 @@ exports.getUserById = async (req, res) => {
     });
   } catch (error) {
     console.error('Get user error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: 'Internal server error' 
+      message: 'Internal server error'
     });
   }
 };
@@ -252,24 +252,24 @@ exports.updateUser = async (req, res) => {
 
     // ตรวจสอบว่า user ที่ request เป็นเจ้าของข้อมูลหรือไม่
     if (parseInt(id) !== requesterId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         status: 'error',
-        message: 'Forbidden - You can only update your own profile' 
+        message: 'Forbidden - You can only update your own profile'
       });
     }
 
     if (!firstName && !lastName && !phone && !userPicture) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         status: 'error',
-        message: 'At least one field is required to update' 
+        message: 'At least one field is required to update'
       });
     }
 
     const user = await Users.findOne({ where: { user_id: id } });
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         status: 'error',
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
@@ -281,9 +281,9 @@ exports.updateUser = async (req, res) => {
     if (phone !== undefined) {
       const phoneRegex = /^0[6-9]\d{8}$/;
       if (!phoneRegex.test(phone)) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           status: 'error',
-          message: 'Invalid phone number format' 
+          message: 'Invalid phone number format'
         });
       }
 
@@ -291,9 +291,9 @@ exports.updateUser = async (req, res) => {
       if (phone !== user.phone) {
         const phoneExists = await Users.findOne({ where: { phone } });
         if (phoneExists) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             status: 'error',
-            message: 'Phone number already exists' 
+            message: 'Phone number already exists'
           });
         }
       }
@@ -319,9 +319,9 @@ exports.updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: 'Internal server error' 
+      message: 'Internal server error'
     });
   }
 };
@@ -334,17 +334,17 @@ exports.deleteUser = async (req, res) => {
 
     // ตรวจสอบว่า user ที่ request เป็นเจ้าของข้อมูลหรือไม่
     if (parseInt(id) !== requesterId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         status: 'error',
-        message: 'Forbidden - You can only delete your own account' 
+        message: 'Forbidden - You can only delete your own account'
       });
     }
 
     const user = await Users.findOne({ where: { user_id: id } });
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         status: 'error',
-        message: 'User not found' 
+        message: 'User not found'
       });
     }
 
@@ -357,15 +357,15 @@ exports.deleteUser = async (req, res) => {
       }
     });
 
-    res.status(200).json({ 
+    res.status(200).json({
       status: 'success',
-      message: 'User account deleted successfully' 
+      message: 'User account deleted successfully'
     });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       status: 'error',
-      message: 'Internal server error' 
+      message: 'Internal server error'
     });
   }
 };

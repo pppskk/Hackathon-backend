@@ -29,6 +29,35 @@ exports.getPlots = async (req, res) => {
   }
 };
 
+exports.getPlotById = async (req, res) => {
+  try {
+    const { plot_id } = req.params;
+
+    const plot = await sequelize.query(`
+      SELECT 
+        pl.plot_id,
+        pl.plot_name,
+        pl.area_size,
+   	    pl.plant_id,
+        p.plant_name
+      FROM plots pl
+      LEFT JOIN plants p ON p.plant_id = pl.plant_id
+      WHERE pl.plot_id = :plot_id
+    `, {
+      replacements: { plot_id },
+      type: QueryTypes.SELECT
+    });
+
+    if (!plot.length) return res.status(404).json({ error: "Plot not found" });
+
+    res.json(plot[0]);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 exports.createPlot = async (req, res) => {
   try {
     if (!req.body) {

@@ -1,6 +1,7 @@
 const { connect, sync } = require('./function/postgre');
 const session = require('express-session');
 const express = require('express');
+const cors = require('cors');
 
 
 const app = express();
@@ -21,6 +22,8 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+app.use(cors());
 
 // Session configuration with better security
 app.use(session({
@@ -52,11 +55,11 @@ app.use('/api', require('./routes'));
     console.log('🔄 Start syncing database...');
     await sync({ force: true });
     console.log('✅ Database synced with FORCE mode!');
-    
+
     // สร้างข้อมูล categories อัตโนมัติ
     const { seedCategories } = require('./function/seedCategories');
     await seedCategories();
-    
+
     app.listen(PORT, () =>
       console.log(`\n🚀 Server running on http://localhost:${PORT}\n`)
     );

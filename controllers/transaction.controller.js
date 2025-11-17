@@ -9,7 +9,7 @@ exports.getTransactions = async (req, res) => {
   try {
     const { round_id } = req.query;
     const sessionUserId = req.session.userId;
-    
+
     if (!round_id) {
       return res.status(400).json({ error: 'round_id is required' });
     }
@@ -20,14 +20,14 @@ exports.getTransactions = async (req, res) => {
       return res.status(404).json({ error: 'Round not found' });
     }
     if (round.user_id !== sessionUserId) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         status: 'error',
-        message: 'Forbidden - You can only access your own transactions' 
+        message: 'Forbidden - You can only access your own transactions'
       });
     }
 
     // ดึง transactions พร้อมข้อมูล category
-    const items = await Transaction.findAll({ 
+    const items = await Transaction.findAll({
       where: { round_id },
       include: [{
         model: TransactionCategory,
@@ -35,7 +35,7 @@ exports.getTransactions = async (req, res) => {
       }],
       order: [['date', 'DESC'], ['id', 'DESC']]
     });
-    
+
     res.json(items);
 
   } catch (err) {
@@ -45,60 +45,74 @@ exports.getTransactions = async (req, res) => {
 
 exports.createTransaction = async (req, res) => {
   try {
-    const { round_id, user_id, category_id, amount, note, date } = req.body;
+    let { user_id, round_id, category_id, amount, note, date, plot_id } = req.body;
 
-    if (!round_id || !user_id || !category_id || !amount) {
-      return res.status(400).json({ error: "Missing required fields." });
+    // STEP 1 — หา round หรือสร้างใหม่
+    if (!round_id && plot_id) {
+      let round = await Round.findOne({ where: { plot_id } });
+
+      // ⬇ ถ้าไม่เจอรอบ → สร้างรอบใหม่ทันที
+      if (!round) {
+        round = await Round.create({
+          plot_id,
+          user_id,
+          round_name: "รอบการปลูกครั้งแรก",
+          start_date: date,         // ใช้วันที่ทำรายการ
+          end_date: null,
+          income_total: 0,
+          expense_total: 0
+        });
+      }
+
+      round_id = round.round_id;
     }
 
-    // 1) บันทึกรายการใหม่
+    if (!round_id) {
+      return res.status(400).json({ error: "Missing round_id" });
+    }
+
+    // STEP 2 — สร้าง transaction
     const tx = await Transaction.create({
-      round_id,
       user_id,
+      round_id,
       category_id,
       amount,
       note,
       date
     });
 
-    // 2) อัปเดตยอดรวมของรอบ (แยกรายรับ-รายจ่าย)
-    const sums = await sequelize.query(`
-      SELECT 
-        COALESCE(SUM(CASE WHEN tc.type_id = 1 THEN t.amount ELSE 0 END), 0) AS expense_total,
-        COALESCE(SUM(CASE WHEN tc.type_id = 2 THEN t.amount ELSE 0 END), 0) AS income_total
-      FROM transactions t
-      JOIN transaction_categories tc ON t.category_id = tc.id
-      WHERE t.round_id = :round_id
+    // STEP 3 — อัปเดตรวมยอดให้ round
+    const totals = await sequelize.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN amount > 0 THEN amount END), 0) AS income_total,
+        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) END), 0) AS expense_total
+      FROM transactions
+      WHERE round_id = :round_id
     `, {
       replacements: { round_id },
       type: QueryTypes.SELECT
     });
 
-    const expense_total = parseFloat(sums[0].expense_total);
-    const income_total = parseFloat(sums[0].income_total);
-    const profit_total = income_total - expense_total;
-
-    // 3) อัปเดตรอบใน production_rounds
     await Round.update(
-      { 
-        expense_total,
-        income_total
+      {
+        income_total: totals[0].income_total,
+        expense_total: totals[0].expense_total
       },
       { where: { round_id } }
     );
 
-    res.status(201).json({
-      message: "Transaction added and round updated.",
-      transaction: tx,
-      summary: {
-        expense_total,
-        income_total,
-        profit_total
-      }
+    res.json({
+      message: "Transaction created successfully",
+      round_id,
+      totals: totals[0],
+      transaction: tx
     });
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
