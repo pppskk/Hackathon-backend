@@ -97,12 +97,9 @@ exports.getPlotSummary = async (req, res) => {
   }
 };
 
-// controllers/dashboardController.js
 exports.getPlotExpenseDetail = async (req, res) => {
   try {
-    const { plot_id } = req.params; // เปลี่ยนจาก req.query
-
-    console.log('📍 Received plot_id:', plot_id); // Debug
+    const { plot_id } = req.params; 
 
     if (!plot_id || plot_id === 'undefined') {
       return res.status(400).json({ 
@@ -110,7 +107,6 @@ exports.getPlotExpenseDetail = async (req, res) => {
       });
     }
 
-    // Query ข้อมูล
     const rows = await sequelize.query(`
       SELECT 
         tc.name AS name,
@@ -127,10 +123,8 @@ exports.getPlotExpenseDetail = async (req, res) => {
       type: QueryTypes.SELECT
     });
 
-    // คำนวณ total
     const totalExpense = rows.reduce((sum, row) => sum + Number(row.amount), 0);
 
-    // คำนวณ percentage
     const details = rows.map(row => ({
       name: row.name,
       amount: Number(row.amount),
@@ -151,16 +145,13 @@ exports.getPlotExpenseDetail = async (req, res) => {
   }
 };
 
-// ===================== EXPENSE BY PLANT ===================== //
-// GET /api/dashboard/expense-by-plant?user_id=1
+// 1. Expense By Plant
 exports.getExpenseByPlant = async (req, res) => {
   try {
     const { user_id } = req.query;
 
-    if (!user_id)
-      return res.status(400).json({ error: "user_id is required" });
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
-    // 1) ดึงค่าใช้จ่ายรวมตามพืช
     const rows = await sequelize.query(
       `
       SELECT 
@@ -175,33 +166,93 @@ exports.getExpenseByPlant = async (req, res) => {
       GROUP BY p.plant_name
       ORDER BY amount DESC
       `,
-      {
-        replacements: { user_id },
-        type: QueryTypes.SELECT,
-      }
+      { replacements: { user_id }, type: QueryTypes.SELECT }
     );
 
-    // 2) ยอดรวม
     const total = rows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-    // 3) คำนวณ % ให้ frontend
     const result = rows.map((r) => ({
       plant_name: r.plant_name,
       amount: Number(r.amount),
       percentage: total ? ((r.amount / total) * 100).toFixed(1) : 0,
     }));
 
-    res.json({
-      total_expense: total,
-      plants: result,
-    });
+    res.json({ total_expense: total, plants: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+// 2. Income By Plant (New)
+exports.getIncomeByPlant = async (req, res) => {
+  try {
+    const { user_id } = req.query;
 
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
+    const rows = await sequelize.query(
+      `
+      SELECT 
+        p.plant_name,
+        COALESCE(SUM(t.amount), 0) AS amount
+      FROM transactions t
+      LEFT JOIN production_rounds pr ON pr.round_id = t.round_id
+      LEFT JOIN plots pl ON pl.plot_id = pr.plot_id
+      LEFT JOIN plants p ON p.plant_id = pl.plant_id
+      WHERE t.amount > 0
+        AND pr.user_id = :user_id
+      GROUP BY p.plant_name
+      ORDER BY amount DESC
+      `,
+      { replacements: { user_id }, type: QueryTypes.SELECT }
+    );
 
+    const total = rows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
+    const result = rows.map((r) => ({
+      plant_name: r.plant_name,
+      amount: Number(r.amount),
+      percentage: total ? ((r.amount / total) * 100).toFixed(1) : 0,
+    }));
 
+    res.json({ total_income: total, plants: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 3. Profit By Plant (New)
+exports.getProfitByPlant = async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    const rows = await sequelize.query(
+      `
+      SELECT 
+        p.plant_name,
+        COALESCE(SUM(pr.income_total - pr.expense_total), 0) AS amount
+      FROM production_rounds pr
+      LEFT JOIN plots pl ON pl.plot_id = pr.plot_id
+      LEFT JOIN plants p ON p.plant_id = pl.plant_id
+      WHERE pr.user_id = :user_id
+      GROUP BY p.plant_name
+      ORDER BY amount DESC
+      `,
+      { replacements: { user_id }, type: QueryTypes.SELECT }
+    );
+
+    const total = rows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    const result = rows.map((r) => ({
+      plant_name: r.plant_name,
+      amount: Number(r.amount),
+      percentage: total ? ((r.amount / total) * 100).toFixed(1) : 0,
+    }));
+
+    res.json({ total_profit: total, plants: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
