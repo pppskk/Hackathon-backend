@@ -1,11 +1,13 @@
 const { connect, sync } = require('./function/postgre');
 const session = require('express-session');
 const express = require('express');
+const cors = require('cors');
 
 
 const app = express();
 const PORT = 3005;
 
+app.use(cors());
 app.use(express.json());
 app.use(session({
   secret: 'FC3XSZYnBW',

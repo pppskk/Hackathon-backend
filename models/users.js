@@ -13,9 +13,10 @@ const User = sequelize.define('users', {
   lastName: {
     type: DataTypes.STRING,
   },
-  phone: {
+  email: {
     type: DataTypes.STRING,
-    unique: true
+    unique: true,
+    allowNull: false
   },
   userPicture: {
     type: DataTypes.STRING
