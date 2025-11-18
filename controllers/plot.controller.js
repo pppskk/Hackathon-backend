@@ -31,7 +31,7 @@ exports.getPlots = async (req, res) => {
 
 exports.getPlotById = async (req, res) => {
   try {
-    const { plot_id } = req.params;
+    const plot_id = req.params.id;
 
     const plot = await sequelize.query(`
       SELECT 

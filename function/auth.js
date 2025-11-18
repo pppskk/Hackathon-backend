@@ -1,12 +1,10 @@
 // Middleware สำหรับตรวจสอบ authentication
 function requireAuth(req, res, next) {
   try {
-    // ตรวจสอบว่ามี session และ userId หรือไม่
+    // สำหรับ mobile app ที่ไม่มี session ให้ skip การตรวจสอบ
     if (!req.session || !req.session.userId) {
-      return res.status(401).json({ 
-        status: 'error',
-        message: 'Unauthorized - Please login first' 
-      });
+      // ถ้าไม่มี session ให้ผ่านไปเลย (สำหรับ mobile)
+      return next();
     }
 
     // ตรวจสอบว่า session ยังไม่หมดอายุ
@@ -35,6 +33,12 @@ function requireAuth(req, res, next) {
 // Middleware สำหรับตรวจสอบว่า user_id ใน request ตรงกับ session หรือไม่
 function checkUserOwnership(req, res, next) {
   try {
+    // สำหรับ mobile app ที่ไม่มี session ให้ skip การตรวจสอบ
+    if (!req.session || !req.session.userId) {
+      // ถ้าไม่มี session ให้ผ่านไปเลย (สำหรับ mobile)
+      return next();
+    }
+
     const sessionUserId = req.session.userId;
     
     // เช็ค user_id จาก body, query, หรือ params
@@ -68,6 +72,12 @@ function checkUserOwnership(req, res, next) {
 // Middleware สำหรับตรวจสอบว่า resource เป็นของ user หรือไม่ (สำหรับ update/delete)
 function requireOwnership(req, res, next) {
   try {
+    // สำหรับ mobile app ที่ไม่มี session ให้ skip การตรวจสอบ
+    if (!req.session || !req.session.userId) {
+      // ถ้าไม่มี session ให้ผ่านไปเลย (สำหรับ mobile)
+      return next();
+    }
+
     const resourceId = req.params.id || req.params.userId;
     const requesterId = req.session.userId;
 

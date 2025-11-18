@@ -326,6 +326,48 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// Get user by phone number
+exports.getUserByPhone = async (req, res) => {
+  try {
+    const { phone } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Phone number is required'
+      });
+    }
+
+    const phoneRegex = /^0[6-9]\d{8}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid phone number format'
+      });
+    }
+
+    const user = await Users.findOne({
+      where: { phone },
+      attributes: ['user_id', 'firstName', 'lastName', 'phone', 'userPicture']
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error('Get user by phone error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Delete user account
 exports.deleteUser = async (req, res) => {
   try {

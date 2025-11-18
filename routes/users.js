@@ -11,6 +11,9 @@ router.post('/login', userController.login);
 router.post('/logout', requireAuth, userController.logout);
 router.get('/check', requireAuth, userController.checkAuth);
 
+// Get user by phone (for login check)
+router.get('/by-phone', userController.getUserByPhone);
+
 // Protected routes - ต้อง login และเป็นเจ้าของข้อมูล
 router.get('/:id', requireAuth, requireOwnership, userController.getUserById);
 router.put('/:id', requireAuth, requireOwnership, userController.updateUser);
