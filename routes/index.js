@@ -15,6 +15,10 @@ router.use('/plots', plotRoutes);
 router.use('/rounds', roundRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use("/yield-history", require("./yieldHistory"));
+router.use("/predict-yield", require("./predictYield"));
+
+
 
 
 router.get('/', (req, res) => {
