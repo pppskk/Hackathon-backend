@@ -60,23 +60,36 @@ exports.getPlotById = async (req, res) => {
 
 exports.createPlot = async (req, res) => {
   try {
-    if (!req.body) {
-      return res.status(400).json({ error: "Request body is missing" });
+    const { user_id, plot_name, area_size, plant_id, plant_name } = req.body;
+
+    if (!user_id || !plot_name) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const { user_id, plant_id, plot_name, area_size } = req.body;
+    let finalPlantId = plant_id;
 
-    if (!user_id || !plant_id || !plot_name) {
-      return res.status(400).json({
-        error: "Missing required fields: user_id, plant_id, plot_name"
-      });
+    // ถ้ามีการกรอกชื่อพืชใหม่ ให้สร้าง plant ใหม่ก่อน
+    if (!plant_id && plant_name) {
+      const newPlant = await sequelize.query(
+        `
+          INSERT INTO plants (plant_name)
+          VALUES (:plant_name)
+          RETURNING plant_id;
+        `,
+        {
+          replacements: { plant_name },
+          type: QueryTypes.SELECT
+        }
+      );
+      finalPlantId = newPlant[0].plant_id;
     }
 
+    // บันทึก plot ใหม่
     const newPlot = await Plot.create({
       user_id,
-      plant_id,
       plot_name,
-      area_size
+      area_size,
+      plant_id: finalPlantId
     });
 
     res.status(201).json(newPlot);
@@ -85,7 +98,6 @@ exports.createPlot = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.updatePlot = async (req, res) => {
   try {
@@ -116,3 +128,66 @@ exports.deletePlot = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// =========================
+// 1) SUMMARY — ยอดรวมค่าใช้จ่ายทั้งหมดของแปลง
+// =========================
+exports.getExpenseSummary = async (req, res) => {
+  try {
+    const { plot_id } = req.params;
+
+    const result = await sequelize.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount) END), 0) AS total_expense
+      FROM transactions
+      WHERE plot_id = :plot_id
+    `, {
+      replacements: { plot_id },
+      type: QueryTypes.SELECT
+    });
+
+    res.json(result[0]);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// =========================
+// 2) BREAKDOWN — ค่าใช้จ่ายแยกตามหมวดหมู่
+// =========================
+exports.getExpenseBreakdown = async (req, res) => {
+  try {
+    const { plot_id } = req.params;
+
+    const items = await sequelize.query(`
+      SELECT 
+        c.category_name AS name,
+        ABS(SUM(t.amount)) AS amount
+      FROM transactions t
+      LEFT JOIN categories c ON c.category_id = t.category_id
+      WHERE t.plot_id = :plot_id AND t.amount < 0
+      GROUP BY c.category_name
+      ORDER BY amount DESC
+    `, {
+      replacements: { plot_id },
+      type: QueryTypes.SELECT
+    });
+
+    // คำนวณ % รวมจากยอดทั้งหมด
+    const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+
+    const result = items.map(item => ({
+      name: item.name,
+      amount: Number(item.amount),
+      percentage: total === 0 ? 0 : ((item.amount / total) * 100).toFixed(0)
+    }));
+
+    res.json(result);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

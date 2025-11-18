@@ -27,13 +27,22 @@ exports.getPlantById = async (req, res) => {
 exports.createPlant = async (req, res) => {
   try {
     const { user_id, plant_name } = req.body;
-    const newPlant = await Plant.create({ user_id, plant_name });
-    console.log("Plant model =", Plant);
+
+    if (!user_id || !plant_name)
+      return res.status(400).json({ error: "user_id และ plant_name จำเป็นต้องมี" });
+
+    const newPlant = await Plant.create({
+      user_id,
+      plant_name
+    });
+
     res.status(201).json(newPlant);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 
 exports.updatePlant = async (req, res) => {

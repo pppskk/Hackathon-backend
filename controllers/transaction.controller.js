@@ -28,7 +28,7 @@ exports.createTransaction = async (req, res) => {
         round = await Round.create({
           plot_id,
           user_id,
-          round_name: "รอบการปลูกครั้งแรก",
+          round_name: null,
           start_date: date,         // ใช้วันที่ทำรายการ
           end_date: null,
           income_total: 0,
